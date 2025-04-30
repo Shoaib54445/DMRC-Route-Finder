@@ -1,4 +1,4 @@
-// in this dijkstra's Algorithm is used on multilist to make it more optimized
+// DMRC Route Generator with Crowd-Based Fastest Path Option
 #include <iostream>
 #include <vector>
 #include <fstream>
@@ -14,6 +14,8 @@ using namespace std;
 
 const int V = 248;
 float graph[V][V];
+int routeMode = 1; // 1 = shortest, 2 = fastest (crowd-based)
+
 // Structure to represent a metro station
 struct Station {
     string name;
@@ -21,10 +23,10 @@ struct Station {
     string color;
     float latitude;
     float longitude;
-    vector<pair<int, float>> adjacentStations; // Store adjacent station code and distance
+    vector<pair<int, float>> adjacentStations;
+    float crowdFactor = 1.0; // NEW: default crowd multiplier
 };
 
-// Multilist to represent metro stations and their connections
 vector<Station> stations;
 
 void secondWindow();
@@ -38,316 +40,228 @@ void addConnection(const string& sourceName, const string& destName, float dista
 float calculateDistance(float lat1, float lon1, float lat2, float lon2);
 void parseStationCodes(const string& filename);
 void parseStationColors(const string& filename);
+void parseStationCrowd(const string& filename);
 void establishConnections(const string& filename);
 int minDistance(float dist[], bool sptSet[]);
 void dijkstra(int src, int dest);
 void printShortestPath(const vector<int>& shortestPath);
 void take_input();
-// void Path(float d, int e, int st);
 void logo(int x, int y);
 void UI();
 
 COORD coord;
-void clrscreen()
-{
-    system("cls");
-}
+void clrscreen() { system("cls"); }
+void delay(unsigned int ms) { clock_t goal = ms + clock(); while (goal > clock()); }
+void gotoxy(int x, int y) { coord.X = x; coord.Y = y; SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord); }
+int timetaken(float dist) { return ceil(dist / 0.55); }
 
-void delay(unsigned int ms)
-{
-    clock_t goal = ms + clock();
-    while (goal > clock())
-        ;
-}
-
-void gotoxy(int x, int y)
-{
-    coord.X = x;
-    coord.Y = y;
-    SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), coord);
-}
-
-int timetaken(float dist)
-{
-    float speed = 0.55;
-    return ceil(dist / speed);
-}
-
-// Function to convert string to uppercase
 string makeCapital(string str) {
-    for (char& c : str) {
-        if (c >= 'a' && c <= 'z') {
-            c = toupper(c);
-        }
-    }
+    for (char& c : str) c = toupper(c);
     return str;
 }
 
-// Function to find index of station with given name in multilist
 int findStationIndex(const string& name) {
     for (size_t i = 0; i < stations.size(); ++i) {
-        if (makeCapital(stations[i].name) == makeCapital(name)) {
-            return i;
-        }
+        if (makeCapital(stations[i].name) == makeCapital(name)) return i;
     }
-    return -1; // Station not found
+    return -1;
 }
 
-// Function to add connection between two stations in multilist
 void addConnection(const string& sourceName, const string& destName, float distance) {
     int sourceIndex = findStationIndex(sourceName);
     int destIndex = findStationIndex(destName);
     if (sourceIndex != -1 && destIndex != -1) {
-     stations[sourceIndex].adjacentStations.emplace_back(destIndex, distance);
-     stations[destIndex].adjacentStations.emplace_back(sourceIndex, distance);
+        stations[sourceIndex].adjacentStations.emplace_back(destIndex, distance);
+        stations[destIndex].adjacentStations.emplace_back(sourceIndex, distance);
     }
 }
 
-// Function to calculate distance between two stations using their latitude and longitude
 float calculateDistance(float lat1, float lon1, float lat2, float lon2) {
-    const float R = 6371.0; // Radius of Earth in kilometers
-    float lat1Rad = lat1 * M_PI / 180.0;
-    float lon1Rad = lon1 * M_PI / 180.0;
-    float lat2Rad = lat2 * M_PI / 180.0;
-    float lon2Rad = lon2 * M_PI / 180.0;
-    float dLat = lat2Rad - lat1Rad;
-    float dLon = lon2Rad - lon1Rad;
-    float a = sin(dLat / 2) * sin(dLat / 2) +
-              cos(lat1Rad) * cos(lat2Rad) *
-              sin(dLon / 2) * sin(dLon / 2);
-    float c = 2 * atan2(sqrt(a), sqrt(1 - a));
-    return R * c; // Distance in kilometers
+    const float R = 6371.0;
+    float dLat = (lat2 - lat1) * M_PI / 180.0;
+    float dLon = (lon2 - lon1) * M_PI / 180.0;
+    float a = sin(dLat/2)*sin(dLat/2) + cos(lat1*M_PI/180.0)*cos(lat2*M_PI/180.0)*sin(dLon/2)*sin(dLon/2);
+    float c = 2 * atan2(sqrt(a), sqrt(1-a));
+    return R * c;
 }
 
-// Function to parse the station codes file
 void parseStationCodes(const string& filename) {
     ifstream file(filename);
-    if (file.is_open()) {
-        string stationName;
-        while (getline(file, stationName)) {
-            Station station;
-            station.name = stationName;
-            stations.push_back(station);
-        }
-        file.close();
-    } else {
-        cout << "Unable to open file: " << filename << endl;
+    string stationName;
+    while (getline(file, stationName)) {
+        Station station;
+        station.name = stationName;
+        stations.push_back(station);
     }
+    file.close();
 }
 
-// Function to parse the station color codes file
 void parseStationColors(const string& filename) {
     ifstream file(filename);
-    if (file.is_open()) {
-        string line;
-        int index = 0;
-        while (getline(file, line)) {
-            stringstream ss(line);
-            string color;
-            while (getline(ss, color, ',')) {
-                stations[index].color = color;
-                index++;
-            }
+    string line;
+    int index = 0;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        string color;
+        while (getline(ss, color, ',')) {
+            stations[index].color = color;
+            index++;
         }
-        file.close();
-    } else {
-        cout << "Unable to open file: " << filename << endl;
     }
+    file.close();
 }
 
-// Function to parse the node value file and establish connections between stations
+void parseStationCrowd(const string& filename) {
+    ifstream file(filename);
+    string line;
+    while (getline(file, line)) {
+        istringstream iss(line);
+        string stationName;
+        float crowd;
+        getline(iss, stationName, ' ');
+        iss >> crowd;
+        int index = findStationIndex(stationName);
+        if (index != -1) stations[index].crowdFactor = crowd;
+    }
+    file.close();
+}
+
 void establishConnections(const string& filename) {
     ifstream file(filename);
-    if (file.is_open()) {
-        string line;
-        while (getline(file, line)) {
-            stringstream ss(line);
-            int stationIndex, numConnections;
-            ss >> numConnections;
-            ss >> stationIndex;
-            for (int i = 0; i < numConnections; ++i) {
-                int destIndex;
-                float distance;
-                ss >> destIndex >> distance;
-                graph[stationIndex - 1][destIndex - 1] = distance;
-            }
+    string line;
+    while (getline(file, line)) {
+        stringstream ss(line);
+        int numConnections, stationIndex;
+        ss >> numConnections >> stationIndex;
+        for (int i = 0; i < numConnections; ++i) {
+            int destIndex;
+            float distance;
+            ss >> destIndex >> distance;
+            graph[stationIndex - 1][destIndex - 1] = distance;
         }
-        file.close();
-    } else {
-        cout << "Unable to open file: " << filename << endl;
     }
+    file.close();
     UI();
 }
 
 int minDistance(float dist[], bool sptSet[]) {
     float min = INT_MAX;
     int min_index;
-
     for (int v = 0; v < V; v++)
-        if (sptSet[v] == false && dist[v] <= min)
+        if (!sptSet[v] && dist[v] <= min)
             min = dist[v], min_index = v;
-
     return min_index;
 }
 
-// Function to perform Dijkstra's algorithm and return the shortest path
 void dijkstra(int src, int dest) {
     float dist[V];
     bool sptSet[V];
     vector<int> shortestPath;
     vector<float> parent[V];
-
-    for (int i = 0; i < V; i++) {
-        dist[i] = INT_MAX;
-        sptSet[i] = false;
-    }
-
+    for (int i = 0; i < V; i++) dist[i] = INT_MAX, sptSet[i] = false;
     dist[src] = 0;
 
     for (int count = 0; count < V - 1; count++) {
         int u = minDistance(dist, sptSet);
         sptSet[u] = true;
-
         for (int v = 0; v < V; v++) {
-            if (!sptSet[v] && graph[u][v] && dist[u] != INT_MAX && dist[u] + graph[u][v] < dist[v]) {
-                dist[v] = dist[u] + graph[u][v];
-                parent[v].clear();
-                parent[v].push_back(u);
-            } else if (!sptSet[v] && graph[u][v] && dist[u] + graph[u][v] == dist[v]) {
-                parent[v].push_back(u);
+            if (!sptSet[v] && graph[u][v] && dist[u] != INT_MAX) {
+                float cost = graph[u][v];
+                if (dist[u] + cost < dist[v]) {
+                    dist[v] = dist[u] + cost;
+                    parent[v].clear();
+                    parent[v].push_back(u);
+                } else if (dist[u] + cost == dist[v]) {
+                    parent[v].push_back(u);
+                }
             }
         }
     }
 
-    // Construct the shortest path from parent array
     int current = dest;
     while (current != src) {
         shortestPath.push_back(current);
-        if (parent[current].empty())
-            break;
+        if (parent[current].empty()) break;
         current = parent[current][0];
     }
     shortestPath.push_back(src);
-    std::reverse(shortestPath.begin(), shortestPath.end());
-
+    reverse(shortestPath.begin(), shortestPath.end());
     printShortestPath(shortestPath);
 }
 
-// Function to print the shortest path including station names and relevant information
 void printShortestPath(const vector<int>& shortestPath) {
     if (shortestPath.empty()) {
         cout << "No path found!" << endl;
         return;
     }
-
     gotoxy(44, 13);
     cout << "****** LOADING ******";
     delay(2000);
     gotoxy(42, 13);
-    cout << "****** ROUTE FOUND ******";
-    cout<<endl;
+    cout << "****** ROUTE FOUND ******\n";
     int n_of_stations = shortestPath.size();
     cout << "Shortest Path: ";
-    for (int i = 0; i < shortestPath.size(); ++i) {
-        int stationIndex = shortestPath[i];
-        cout << stations[stationIndex].name;
-        if (i < shortestPath.size() - 1)
-            cout << " -> ";
+    for (int i = 0; i < n_of_stations; ++i) {
+        cout << stations[shortestPath[i]].name;
+        if (i < n_of_stations - 1) cout << " -> ";
     }
     cout << endl;
     delay(1000);
     gotoxy(72, 12);
     cout << "NO OF STATIONS : ";
     gotoxy(89, 12);
-    cout << n_of_stations - 1 << "";
-
-    // this is for searching again
+    cout << n_of_stations - 1;
     delay(2500);
     gotoxy(44, 9);
     cout << "WANT TO SEARCH AGAIN ?  ";
     string choice;
     cin >> choice;
     choice = makeCapital(choice);
-    if (choice == "Y" || choice == "YES")
-        secondWindow();
+    if (choice == "Y" || choice == "YES") secondWindow();
     gotoxy(5, 30);
     char ch;
     scanf("%c", &ch);
     cout << endl;
-    return;
-
 }
 
 void take_input() {
-    char ch;
     string start_s, end_s;
+    gotoxy(16, 3); cout << "ENTER THE STARTING STATION: ";
+    gotoxy(20, 5); getline(cin, start_s);
+    gotoxy(72, 3); cout << "ENTER THE DESTINATION STATION: ";
+    gotoxy(76, 5); getline(cin, end_s);
 
-    // Get input for starting and ending stations
-    gotoxy(16, 3);
-    cout << "ENTER THE STARTING STATION: ";
-    gotoxy(20, 5);
-    getline(cin, start_s);
-    gotoxy(72, 3);
-    cout << "ENTER THE DESTINATION STATION: ";
-    gotoxy(76, 5);
-    getline(cin, end_s);
-
-    // Convert input to uppercase
     start_s = makeCapital(start_s);
     end_s = makeCapital(end_s);
-
-    // Find station indices
+    int startcode = findStationIndex(start_s);
+    int endcode = findStationIndex(end_s);
     int fault = 0;
-    int startcode = -1, endcode = -1;
-    for (int i = 0; i < V; ++i) {
-        if (stations[i].name == start_s) {
-            startcode = i;
-            break;
+
+    if (startcode == -1) { gotoxy(42, 10); cout << "INVALID STARTING STATION NAME ENTERED"; delay(2500); fault = 1; }
+    if (endcode == -1) { gotoxy(40, 11); cout << "INVALID DESTINATION STATION NAME ENTERED"; delay(2500); fault = 1; }
+
+    if (fault) { secondWindow(); return; }
+
+    if (routeMode == 2) {
+        for (int i = 0; i < V; ++i) {
+            for (int j = 0; j < V; ++j) {
+                if (graph[i][j] > 0) {
+                    float avgCrowd = (stations[i].crowdFactor + stations[j].crowdFactor) / 2.0;
+                    graph[i][j] *= avgCrowd;
+                }
+            }
         }
     }
-    if (startcode == -1) {
-        gotoxy(42, 10);
-        cout << "INVALID STARTING STATION NAME ENTERED" << endl;
-        delay(2500);
-        fault = 1;
-    }
-    for (int i = 0; i < V; ++i) {
-        if (stations[i].name == end_s) {
-            endcode = i;
-            break;
-        }
-    }
-    if (endcode == -1) {
-        gotoxy(40, 11);
-        cout << "INVALID DESTINATION STATION NAME ENTERED" << endl;
-        delay(2500);
-        fault = 1;
-    }
-    if (fault)
-    {
-        secondWindow();
-        return;
-    }
-    else{
-        // Call Dijkstra's algorithm to find shortest path
-        dijkstra(startcode, endcode);
-    }
+    dijkstra(startcode, endcode);
 }
 
-void logo(int x, int y)
-{
-    gotoxy(x, y);
-    printf("   ___                     ___       ____");
-    gotoxy(x, y + 1);
-    printf(" ||   \\\\   ||\\\\    //||  ||   \\\\   //    \\\\");
-    gotoxy(x, y + 2);
-    printf(" ||    ||  || \\\\  // ||  ||    || ||");
-    gotoxy(x, y + 3);
-    printf(" ||    ||  ||  \\\\//  ||  ||___//  ||");
-    gotoxy(x, y + 4);
-    printf(" ||    ||  ||        ||  ||  \\\\   ||");
-    gotoxy(x, y + 5);
-    printf(" ||___//   ||        ||  ||   \\\\   \\\\____//");
+void logo(int x, int y) {
+    gotoxy(x, y);     printf("   ___                     ___       ____");
+    gotoxy(x, y + 1); printf(" ||   \\\\   ||\\\\    //||  ||   \\\\   //    \\\\");
+    gotoxy(x, y + 2); printf(" ||    ||  || \\\\  // ||  ||    ||  ||");
+    gotoxy(x, y + 3); printf(" ||    ||  ||  \\\\//  ||  ||___//  ||");
+    gotoxy(x, y + 4); printf(" ||    ||  ||        ||  ||  \\\\   ||");
+    gotoxy(x, y + 5); printf(" ||___//   ||        ||  ||   \\\\   \\\\____//");
 }
 
 
@@ -356,39 +270,34 @@ void secondWindow() {
     gotoxy(48, 19);
     system("color 0D");
     delay(90);
-    
-    // Prompt user for input and find shortest path
     take_input();
 }
 
-void UI()
-{
+void UI() {
     delay(90);
     system("color 0A");
-    delay(90);
     logo(37, 4);
     delay(90);
+    gotoxy(42, 14); cout << "WELCOME TO DELHI METRO RAIL APP";
     delay(90);
-    delay(90);
-    gotoxy(42, 14);
-    cout << "WELCOME TO DELHI METRO RAIL APP";
-    delay(90);
-    delay(90);
-    gotoxy(47, 18);
-    printf("PRESS ENTER TO CONTINUE");
-    char ch;
-    scanf("%c", &ch);
+    gotoxy(47, 18); printf("PRESS ENTER TO CONTINUE");
+    char ch; scanf("%c", &ch);
+
+    clrscreen();
+    gotoxy(40, 8); cout << "SELECT ROUTE TYPE:";
+    gotoxy(40, 10); cout << "1. SHORTEST PATH";
+    gotoxy(40, 11); cout << "2. FASTEST PATH (CONSIDERING CROWD)";
+    gotoxy(40, 13); cout << "ENTER CHOICE (1 or 2): ";
+    cin >> routeMode;
+    cin.ignore();
+
     secondWindow();
 }
 
 int main() {
-    // Parse station codes and colors
     parseStationCodes("stationcodes.txt");
     parseStationColors("stationcolorcodes.txt");
-
-    // Establish connections between stations
+    parseStationCrowd("station_crowd.txt");
     establishConnections("node_values_new.txt");
-
-    // Now, the connections between stations are established in the graph array
     return 0;
 }
