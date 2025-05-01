@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Delhi Metro Route Finder</title>
+    <style>
+        body {
+            font-family: 'Arial', sans-serif;
+            background: linear-gradient(to right, #1a2a3a, #2c3e50);
+            color: #ecf0f1;
+            margin: 0;
+            padding: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        h1 {
+            font-size: 2.8rem;
+            color: #3498db;
+            text-align: center;
+            margin-bottom: 30px;
+            font-weight: bold;
+            text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+        }
+
+        .container {
+            max-width: 800px;
+            width: 100%;
+            padding: 30px;
+            background-color: rgba(44, 62, 80, 0.95);
+            border-radius: 12px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+            text-align: center;
+        }
+
+        select, button {
+            padding: 15px;
+            margin: 15px 10px;
+            border-radius: 8px;
+            border: 1px solid #4a627a;
+            font-size: 17px;
+            width: 320px;
+            transition: all 0.3s ease;
+            background-color: #34495e;
+            color: #ecf0f1;
+            appearance: none;
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            background-image: url('data:image/svg+xml;charset=US-ASCII,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20width%3D%22292.4%22%20height%3D%22292.4%22%3E%3Cpath%20fill%3D%22%23ecf0f1%22%20d%3D%22M287%2069.4a17.6%2017.6%200%200%200-13-5.4H18.4c-6.5%200-10.3%207.4-6.5%2012.7l121.4%20127.1c1.3%201.3%203.4%202%205.5%202%202.1%200%204.2-.7%205.5-2L287%2082.1a17.5%2017.5%200%200%200%200-12.7z%22%2F%3E%3C%2Fsvg%3E');
+            background-repeat: no-repeat;
+            background-position: right 10px top 50%;
+            background-size: 12px auto;
+            padding-right: 30px;
+        }
+
+        select option {
+             background-color: #34495e;
+             color: #ecf0f1;
+        }
+
+        select:focus, button:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 8px rgba(52, 152, 219, 0.5);
+        }
+
+        button {
+            background-color: #3498db;
+            color: white;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+            border: none;
+            padding-right: 15px;
+            background-image: none;
+        }
+
+        button:hover {
+            background-color: #2980b9;
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.3);
+            transform: translateY(-2px);
+        }
+
+         button:active {
+            background-color: #206a9b;
+            transform: translateY(0);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+        }
+
+        .station-tag {
+            display: inline-block;
+            padding: 10px 15px;
+            margin: 5px 8px;
+            background-color: #5a7a9a;
+            color: white;
+            font-weight: bold;
+            border-radius: 20px;
+            transition: background-color 0.3s ease, transform 0.2s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+        }
+
+        .station-tag:hover {
+             transform: translateY(-3px);
+             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+
+        .arrow {
+            font-size: 2rem;
+            margin: 0 5px;
+            vertical-align: middle;
+            color: #7f8c8d;
+            transition: transform 0.3s ease;
+        }
+
+        .arrow:hover {
+            transform: scale(1.3);
+            color: #bdc3c7;
+        }
+
+        .route-output {
+            margin-top: 40px;
+            font-size: 1.2rem;
+            line-height: 1.8;
+            text-align: center;
+            color: #bdc3c7;
+        }
+
+        .route-output h2 {
+            font-size: 2rem;
+            margin-bottom: 15px;
+            color: #3498db;
+            text-align: center;
+        }
+
+        .route-output .route-details {
+            margin-top: 30px;
+            padding: 20px;
+            background-color: #34495e;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            display: inline-block;
+            text-align: left;
+        }
+
+        .route-details p {
+            margin: 8px 0;
+            color: #ecf0f1;
+        }
+
+         .route-details p strong {
+             color: #9b59b6;
+         }
+
+        @media (max-width: 600px) {
+            .container {
+                padding: 20px;
+            }
+
+            select, button {
+                width: 95%;
+                margin: 10px 0;
+            }
+
+            h1 {
+                font-size: 2rem;
+            }
+
+            .route-output h2 {
+                font-size: 1.6rem;
+            }
+             .station-tag {
+                 margin: 5px 4px;
+             }
+             .arrow {
+                 font-size: 1.5rem;
+             }
+        }
+
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚇 Delhi Metro Route Finder</h1>
+
+        <select id="source">
+            <option value="">Select Source Station</option>
+        </select>
+
+        <select id="destination">
+            <option value="">Select Destination Station</option>
+        </select>
+
+        <select id="mode">
+            <option value="shortest">Shortest</option>
+            <option value="least_crowded">Least Crowded</option>
+        </select>
+
+        <br />
+        <button onclick="getRoute()">Find Route</button>
+
+        <div id="routeOutput" class="route-output"></div>
+    </div>
+
+    <script>
+        const stations = [
+            "VAISHALI", "KAUSHAMBI", "ANAND VIHAR ISBT", "KARKARDUMA", "PREET VIHAR", "NIRMAN VIHAR",
+            "LAXMI NAGAR", "YAMUNA BANK", "INDRAPRASTHA", "SUPREME COURT", "MANDI HOUSE", "BARAKHAMBA ROAD",
+            "RAJIV CHOWK", "RK ASHRAM MARG", "JHANDEWALAN", "KAROL BAGH", "RAJENDRA PALACE", "PATEL NAGAR",
+            "SHADI PUR", "KIRTI NAGAR", "MOTI NAGAR", "RAMESH NAGAR", "RAJOURI GARDEN", "TAGORE GARDEN",
+            "SUBHASH NAGAR", "TILAK NAGAR", "JANAKPURI EAST", "JANAKPURI WEST", "UTTAM NAGAR EAST",
+            "UTTAM NAGAR WEST", "NAWADA", "DWARKA MOD", "DWARKA", "DWARKA SECTOR 14", "DWARKA SECTOR 13",
+            "DWARKA SECTOR12", "DWARKA SECTOR 11", "DWARKA SECTOR 10", "DWARKA SECTOR 9", "DWARKA SECTOR 8",
+            "DWARKA SECTOR 21", "NOIDA ELECTRONIC CITY", "NOIDA SECTOR 62", "NOIDA SECTOR 59",
+            "NOIDA SECTOR 61", "NOIDA SECTOR 52", "NOIDA SECTOR 34", "NOIDA CITY CENTRE", "GOLF COURSE",
+            "BOTANICAL GARDEN", "NOIDA SECTOR 18", "NOIDA SECTOR 16", "NOIDA SECTOR 15", "NEW ASHOK NAGAR",
+            "MAYUR VIHAR EXTENSION", "MAYUR VIHAR 1", "AKSHARDHAM", "OKHLA BIRD SANCTUARY", "KALINDI KUNJ",
+            "JASOLA VIHAR SHAHEEN BAGH", "OKHLA VIHAR", "JAMIA MILIA ISLAMIA", "SUKHDEV VIHAR",
+            "NSIC OKHLA", "KALKAJI MANDIR", "NEHRU ENCLAVE", "GREATER KAILASH", "CHIRAG DELHI",
+            "PANCHSHEEL PARK", "HAUZ KHAS", "IIT", "R K PURAM", "MUNIRKA", "VASANT VIHAR", "SHANKAR VIHAR",
+            "TERMINAL T1 IGI AIRPORT", "SADAR BAZAR CANTONMENT", "PALAM", "DASHRATH PURI", "DABRI MOR",
+            "SAMAYPUR BADLI", "ROHINI SECTOR 18", "HAIDERPUR BADLI MOR", "JAHANGIRPURI", "ADARSH NAGAR",
+            "AZADPUR", "MODEL TOWN", "GTB NAGAR", "VISHWA VIDYALAYA", "VIDHAN SABHA", "CIVI LINES",
+            "KASHMERE GATE", "CHANDNI CHOWK", "CHAWRI BAZAR", "NEW DELHI", "PATEL CHOWK",
+            "CENTRAL SECRETARIAT", "UDYOG BHAWAN", "LOK KALYAN MARG", "JORBAGH", "INA", "AIIMS",
+            "GREEN PARK", "MALVIYA NAGAR", "SAKET", "QUTAB MINAR", "CHHATARPUR", "SULTANPUR",
+            "GHITORNI", "ARJANGARH", "GURU DHRONACHARYA", "SIKANDERPUR", "MG ROAD", "IFFCO CHOWK",
+            "HUDA CITY CENTRE", "CITY PARK", "BUS STAND", "PANDIT SHREE RAM SHARMA", "TIKRI BORDER",
+            "TIKRI KALAN", "GHEVRA METRO STATION", "MUNDKA INDUSTRIAL AREA (MIA)", "MUNDKA",
+            "RAJDHANI PARK", "NANGLOI RAILWAY STATION", "NANGLOI", "MAHARAJA SURAJMAL STADIUM",
+            "UDYOG NAGAR", "PEERAGARHI", "PASCHIM VIHAR (W)", "PASCHIM VIKAR (E)", "MADIPUR",
+            "SHIVAJI PARK", "PUNJABI BAGH", "ASHOK PARK MAIN", "INDERLOK", "SATGURU RAM SINGH MARG",
+            "AIRPORT", "DELHI AEROCITY", "DHAULA KHAN", "SHIVAJI STADIUM", "RITHALA", "ROHINI WEST",
+            "ROHINI EAST", "PITAMPURA", "KOHAT ENCLAVE", "NETAJI SUBHASH PLACE", "KESHAV PURAM",
+            "KANHAIYA NAGAR", "SHASTRI NAGAR", "PRATAP NAGAR", "PULBANGASH", "TIS HAZARI",
+            "SHASTRI PARK", "SEELAMPUR", "WELCOME", "SHAHDARA", "MANSAROVAR PARK", "JHILMIL",
+            "DILSHAD GARDEN", "SHAHID NAGAR", "RAJ BAGH", "RAJENDRA NAGAR", "SHYAM PARK", "MOHAN NAGAR",
+            "ARTHALA", "HINDON RIVER", "SHAHEED STHAL", "MAJLIS PARK", "SHALIMAR BAGH", "SHAKURPUR",
+            "PUNJABI BAGH (W)", "ESI - BASAIDARAPUR", "MAYAPURI", "NARAINA VIHAR", "DELHI CANTT.",
+            "DURGABAI DESHMUKH SOUTH CAMPUS", "SIR VISHWESHWARAIAH MOTI BAGH", "BHIKAJI CAMA PLACE",
+            "SAROJINI NAGAR", "SOUTH EXTENSION", "LAJPAT NAGAR", "VINOBA PURI", "ASHRAM",
+            "HAZRAT NIZAMUDDIN", "MAYUR VIHAR POCKET 1", "TRILOKPURI-SANJAY LAKE",
+            "EAST VINOD NAGAR- MAYUR VIHAR - 2", "MANDAWALI- WEST VINOD NAGAR", "I.P EXTENSION",
+            "KARKARDUMA COURT", "KRISHNA NAGAR", "EAST AZAD NAGAR", "JAFFRABAD", "MAUJPUR - BABARPUR",
+            "GOKULPURI", "JOHRI ENCLAVE", "SHIV VIHAR", "LAL QUILA", "JAMA MASJID", "DELHI GATE", "I.T.O",
+            "JANPATH", "KHAN MARKET", "JLN STADIUM", "JANGPURA", "MOOLCHAND", "KAILASH COLONY",
+            "NEHRU PLACE", "GOVIND PURI", "HARKESH NAGAR OKHLA", "JASOLA APOLLO", "SARITA VIHAR",
+            "MOHAN ESTATE", "TUGHLAQABAD STATION", "BADARPUR BORDER", "SARAI", "N.H.P.C. CHOWK",
+            "MEWALA MAHARAJPUR", "SEC 28", "BADKAL MOR", "OLD FARIDABAD", "NEELAM CHOWK AJRONDA",
+            "BATA CHOWK", "ESCORTS MUJESAR", "SANT SURDAS", "RAJA NAHAR SINGH", "SEC 71", "SEC 50",
+            "SEC 78", "SEC 101", "SEC 81", "DADRI ROAD", "SEC 82", "SEC 137", "SEC 142", "SEC 143",
+            "SEC 144", "SEC 145", "SEC 146", "SEC 147", "SEC 148", "KNOWLEDGE PARK", "PARI CHOWK",
+            "ALPHA 1", "DELTA 1", "GNIDA OFFICE", "DEPOT STATION"
+        ];
+
+
+        const colors = {
+            "BLUE": "#3498db",
+            "RED": "#e74c3c",
+            "YELLOW": "#f1c40f",
+            "VOILET": "#9B26B6",
+            "MAGENTA" : "#FF00FF",
+            "PINK" : "#ffc0cb"
+        };
+
+        const sourceSelect = document.getElementById("source");
+        const destSelect = document.getElementById("destination");
+
+        stations.forEach(station => {
+            const option1 = new Option(station, station);
+            const option2 = new Option(station, station);
+            sourceSelect.add(option1);
+            destSelect.add(option2);
+        });
+
+        async function getRoute() {
+            const source = sourceSelect.value;
+            const destination = destSelect.value;
+            const mode = document.getElementById("mode").value;
+            const output = document.getElementById("routeOutput");
+
+            if (!source || !destination) {
+                 output.innerHTML = "<p style='color:#e74c3c;'>Please select both source and destination stations.</p>";
+                 return;
+            }
+
+            output.innerHTML = "<p style='color:#bdc3c7;'>Loading route...</p>";
+
+            try {
+
+                const response = await fetch("http://localhost:3000/route", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ source, destination, mode })
+                });
+
+                const data = await response.json();
+
+                if (data.error) {
+                    output.innerHTML = `<p style='color:#e74c3c;'>${data.error}</p>`;
+                    return;
+                }
+
+                let html = "<h2>Route:</h2><div style='text-align: center;'>";
+
+                if (data.path && Array.isArray(data.path)) {
+                    data.path.forEach((p, index) => {
+                        const color = colors[p.color ? p.color.toUpperCase() : ''] || "#7f8c8d";
+                        html += `<span class='station-tag' style='background-color:${color};'>${p.station}</span>`;
+                        if (index < data.path.length - 1) {
+                             html += `<span class='arrow'>➡️</span>`;
+                        }
+                    });
+                } else {
+                     html += "<p>No route path found.</p>";
+                }
+
+                html += "</div><br/>";
+
+                html += `<div class="route-details">
+                            <p><strong>Distance:</strong> ${data.distance || 'N/A'}</p>
+                            <p><strong>Time:</strong> ${data.time || 'N/A'}</p>
+                            <p><strong>Stops:</strong> ${data.stops || 'N/A'}</p>
+                          </div>`;
+                output.innerHTML = html;
+
+            } catch (err) {
+                console.error("Fetch error:", err);
+                output.innerHTML = `<p style='color:#e74c3c;'>Failed to fetch route. Is backend running?</p>`;
+            }
+        }
+    </script>
+</body>
+</html>
